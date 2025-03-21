@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图片字幕生成器</title>
+    <style>
+        body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .control-panel {
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        .preview-container {
+            margin: 20px 0;
+        }
+        #previewCanvas {
+            max-width: 100%;
+            border: 1px solid #ccc;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+        }
+        .btn {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>图片字幕生成器</h1>
+    
+    <div class="control-panel">
+        <div class="control-group">
+            <label>选择文件：</label>
+            <input type="file" id="imageInput" accept="image/*">
+        </div>
+        
+        <div class="control-group">
+            <label>字幕高度(px)：</label>
+            <input type="number" id="subtitleHeight" value="40">
+            
+            <label>字体大小(px)：</label>
+            <input type="number" id="fontSize" value="20">
+            
+            <label>字体颜色：</label>
+            <input type="color" id="fontColor" value="#ffffff">
+            
+            <label>轮廓颜色：</label>
+            <input type="color" id="strokeColor" value="#000000">
+        </div>
+    </div>
+
+    <textarea id="subtitleText" placeholder="请输入字幕内容，每行一句"></textarea>
+
+    <div>
+        <button class="btn" onclick="generateSubtitle()">生成字幕图片</button>
+        <button class="btn" onclick="saveImage()">保存图片</button>
+    </div>
+
+    <div class="preview-container">
+        <canvas id="previewCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        let originalImage = null;
+
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        originalImage = img;
+                        generateSubtitle();
+                    }
+                    img.src = event.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function generateSubtitle() {
+            if (!originalImage) return;
+
+            const subtitleHeight = parseInt(document.getElementById('subtitleHeight').value);
+            const fontSize = parseInt(document.getElementById('fontSize').value);
+            const fontColor = document.getElementById('fontColor').value;
+            const strokeColor = document.getElementById('strokeColor').value;
+            const subtitles = document.getElementById('subtitleText').value.split('\n').filter(line => line.trim());
+
+            // 设置画布尺寸为原图大小
+            canvas.width = originalImage.width;
+            canvas.height = originalImage.height;
+
+            // 绘制原始图片
+            ctx.drawImage(originalImage, 0, 0);
+
+            // 设置字体
+            ctx.font = `${fontSize}px Arial`;
+            ctx.textAlign = 'center';
+
+            // 计算字幕位置，从底部向上均匀分布
+            const spacing = subtitleHeight * 1.2; // 增加行间距
+            const totalHeight = spacing * (subtitles.length - 1);
+            const startY = canvas.height - totalHeight - subtitleHeight;
+
+            // 绘制字幕背景和文字
+            subtitles.forEach((text, index) => {
+                const y = startY + (spacing * index);
+                
+                // 保存当前绘图状态
+                ctx.save();
+                
+                // 绘制半透明背景
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(0, y, canvas.width, subtitleHeight);
+                
+                // 绘制文字轮廓
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = 3;
+                ctx.strokeText(text, canvas.width / 2, y + (subtitleHeight / 2) + (fontSize / 3));
+
+                // 绘制文字
+                ctx.fillStyle = fontColor;
+                ctx.fillText(text, canvas.width / 2, y + (subtitleHeight / 2) + (fontSize / 3));
+                
+                // 恢复绘图状态
+                ctx.restore();
+            });
+        }
+
+        function saveImage() {
+            const link = document.createElement('a');
+            link.download = 'subtitle_image.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>
